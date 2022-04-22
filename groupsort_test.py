@@ -24,9 +24,11 @@ x = torch.randn(b, f).cuda()
 
 def group_sort_2_maxmin(x):
     new_x = x.view(-1, 2, f//2)
+    return maxmin(new_x)
 
-    maxmin = CudaMaxMin(1)
-    return maxmin(x)
+def group_sort_2_maxmin_cuda(x):
+    new_x = x.view(-1, 2, f//2)
+    return maxmin(new_x)
 
 def group_sort_3_sp(x):
     a, b, c = x.split(f//3, dim=-1)
@@ -46,11 +48,19 @@ def group_sort_2_sp(x):
 def group_sort_2(x):
     return x.view(-1, 2, f//2).sort(dim=1)
 
+maxmin = PyMaxMin(1)
 st_time = time.time()
 for i in range(500):
     y = group_sort_2_maxmin(x)
 ed_time = time.time()
 print("maxmin g=2: {:.8f}".format(ed_time - st_time))
+
+maxmin = CudaMaxMin(1)
+st_time = time.time()
+for i in range(500):
+    y = group_sort_2_maxmin_cuda(x)
+ed_time = time.time()
+print("cuda maxmin g=2: {:.8f}".format(ed_time - st_time))
 
 st_time = time.time()
 for i in range(500):
