@@ -29,7 +29,7 @@ __global__ void maxmin_cuda_forward_kernel(
 
       // insertion sort
       for (int i = 1; i < group_size; i++) {
-        scalar_t key = output[start_idx + inner_stride * i]
+        scalar_t key = output[start_idx + inner_stride * i];
         int j = i - 1;
         while (j >= 0 && input[start_idx + inner_stride * j] > key) {
           output[start_idx + inner_stride * (j + 1)] = output[start_idx + inner_stride * j];
@@ -60,6 +60,27 @@ __global__ void maxmin_cuda_forward_kernel(
       arr[j + 1] = key;
   }
 */
+
+  /*
+
+  if (outer_idx < outer_size && stride_idx < inner_stride) {
+    const int left_idx = inner_stride * axis_length * outer_idx + inner_idx * inner_stride + stride_idx;
+    if (inner_idx < axis_length - 1) {
+      const int right_idx = left_idx + inner_stride;
+      if (input[left_idx] > input[right_idx]) {
+        output[left_idx] = input[left_idx];
+        output[right_idx] = input[right_idx];
+      } else {
+        output[left_idx] = input[right_idx];
+        output[right_idx] = input[left_idx];
+      }
+    } else if (inner_idx < axis_length) {
+      // In range, but at end of sorting axis
+      output[left_idx] = input[left_idx];
+    }
+  }
+
+  */
 
 
 }
