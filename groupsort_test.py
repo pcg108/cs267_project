@@ -22,9 +22,8 @@ f = 2400
 
 x = torch.randn(b, f).cuda()
 
-def group_sort_cuda(x, group_size):
-    maxmin = CudaMaxMin(1, group_size)
-    new_x = x.view(-1, group_size, f//group_size)
+def group_sort_cuda(x, maxmin, group_size):
+    new_x = x.view(-1, 2, f//2)
     return maxmin(new_x).view(b, f)
 
 def group_sort_torch(x, group_size):
@@ -52,6 +51,13 @@ def group_sort_2(x):
 # ed_time = time.time()
 # print("maxmin g=2: {:.8f}".format(ed_time - st_time))
 
+maxmin2 = CudaMaxMin(1, group_size=2)
+# groupsize=2, cuda
+st_time = time.time()
+for i in range(500):
+    cuda_2 = group_sort_cuda(x, maxmin2, 2)
+ed_time = time.time()
+print("cuda maxmin g=2: {:.8f}".format(ed_time - st_time))
 
 # groupsize=2, naive
 st_time = time.time()
@@ -67,16 +73,18 @@ for i in range(500):
 ed_time = time.time()
 print("pytorch g=2: {:.8f}".format(ed_time - st_time))
 
-# groupsize=2, cuda
-st_time = time.time()
-for i in range(500):
-    cuda_2 = group_sort_cuda(x, 2)
-ed_time = time.time()
-print("cuda maxmin g=2: {:.8f}".format(ed_time - st_time))
-
 print("correctness gs=2:")
 print(torch.all(torch.eq(cuda_2, naive_2)))
 print(torch.all(torch.eq(cuda_2, torch_2)))
+
+
+maxmin3 = CudaMaxMin(1, group_size=3)
+# groupsize=3, cuda
+st_time = time.time()
+for i in range(500):
+    cuda_3 = group_sort_cuda(x, maxmin3, 3)
+ed_time = time.time()
+print("cuda maxmin g=3: {:.8f}".format(ed_time - st_time))
 
 # groupsize=3, naive
 st_time = time.time()
@@ -92,12 +100,7 @@ for i in range(500):
 ed_time = time.time()
 print("pytorch g=3: {:.8f}".format(ed_time - st_time))
 
-# groupsize=3, cuda
-st_time = time.time()
-for i in range(500):
-    cuda_3 = group_sort_cuda(x, 3)
-ed_time = time.time()
-print("cuda maxmin g=3: {:.8f}".format(ed_time - st_time))
+
 
 print("correctness gs=3:")
 print(torch.all(torch.eq(cuda_3, naive_3)))
