@@ -4,6 +4,7 @@
 #include <cuda_runtime.h>
 
 #include <vector>
+#include <stdio.h>
 
 template <typename scalar_t>
 __global__ void maxmin_cuda_forward_kernel(
@@ -17,10 +18,11 @@ __global__ void maxmin_cuda_forward_kernel(
   const int axis_idx = blockIdx.y * blockDim.y + threadIdx.y;
   const int stride_idx = blockIdx.z * blockDim.z + threadIdx.z;
   const int inner_idx = group_size * axis_idx;
-
   if (outer_idx < outer_size && stride_idx < inner_stride) {
+    
     const int start_idx = inner_stride * axis_length * outer_idx + inner_idx * inner_stride + stride_idx;
-    if (inner_idx < axis_length - 1) {
+    
+    if (inner_idx < axis_length - 1) { // TODO: FIX CONDITION FOR WHAT HAPPENS AT ENDS OF AXIS (maybe just fix input to always be a multiple?)
 
       // copy input to output and modify output in-place
       for (int i = 0; i < group_size; i++) {
@@ -31,20 +33,22 @@ __global__ void maxmin_cuda_forward_kernel(
       for (int i = 1; i < group_size; i++) {
         scalar_t key = output[start_idx + inner_stride * i];
         int j = i - 1;
-        while (j >= 0 && input[start_idx + inner_stride * j] > key) {
+        while (j >= 0 && output[start_idx + inner_stride * j] > key) {
           output[start_idx + inner_stride * (j + 1)] = output[start_idx + inner_stride * j];
           j = j - 1;
         }
         output[start_idx + inner_stride * (j + 1)] = key;
       }
-     
+
     } else if (inner_idx < axis_length) {
       // In range, but at end of sorting axis
       output[start_idx] = input[start_idx];
     }
+
   }
 
 /*
+  // REGULAR C++ INSERTION SORT CODE
   int i, key, j;
   for (i = 1; i < n; i++) {
       key = arr[i];
