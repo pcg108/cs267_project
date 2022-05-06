@@ -110,7 +110,8 @@ at::Tensor maxmin_cuda_forward(
 at::Tensor maxmin_cuda_backward(
     at::Tensor input,
     at::Tensor grad,
-    int32_t axis);
+    int32_t axis,
+    int32_t group_size);
 
 
 // C++ interface
@@ -133,12 +134,13 @@ at::Tensor maxmin_forward(
 at::Tensor maxmin_backward(
     at::Tensor input,
     at::Tensor grad,
-    int32_t axis) {
+    int32_t axis,
+    int32_t group_size) {
   CHECK_INPUT(input);
   CHECK_INPUT(grad);
 
   if (input.type().is_cuda()) {
-    return maxmin_cuda_backward(input, grad, axis);
+    return maxmin_cuda_backward(input, grad, axis, group_size);
   } else {
     return maxmin_cpu_backward(input, grad, axis);
   }

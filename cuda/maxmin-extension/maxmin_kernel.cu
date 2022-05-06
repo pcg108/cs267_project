@@ -131,33 +131,70 @@ __global__ void maxmin_cuda_backward_kernel(
     size_t outer_size,
     size_t axis_length,
     size_t inner_stride,
+    int32_t group_size,
+    scalar_t* __restrict__ temp,
     scalar_t* __restrict__ output_grad) {
   const int outer_idx = blockIdx.x * blockDim.x + threadIdx.x;
   const int axis_idx = blockIdx.y * blockDim.y + threadIdx.y;
   const int stride_idx = blockIdx.z * blockDim.z + threadIdx.z;
-  const int inner_idx = 2 * axis_idx;
+  const int inner_idx = group_size * axis_idx;
+
   if (outer_idx < outer_size && stride_idx < inner_stride) {
-    const int left_idx = inner_stride * axis_length * outer_idx + inner_idx * inner_stride + stride_idx;
-    if (inner_idx < axis_length - 1) {
-      const int right_idx = left_idx + inner_stride;
-      if (input[left_idx] > input[right_idx]) {
-        output_grad[left_idx] = grad[left_idx];
-        output_grad[right_idx] = grad[right_idx];
-      } else {
-        output_grad[left_idx] = grad[right_idx];
-        output_grad[right_idx] = grad[left_idx];
+    const int start_idx = inner_stride * axis_length * outer_idx + inner_idx * inner_stride + stride_idx;
+    if (inner_idx < axis_length - 1) { 
+
+      // we need to sort the gradient based on the input tensor, so we make a copy of the input tensor and 
+      // sort it, matching the operations to sort the gradient
+      for (int i = 0; i < group_size; i++) {
+        temp[start_idx + inner_stride * i] = input[start_idx + inner_stride * i];
+        output_grad[start_idx + inner_stride * i] = grad[start_idx + inner_stride * i];
+      }
+
+      // insertion sort (same as forward pass except now adding gradient)
+      for (int i = 1; i < group_size; i++) {
+        scalar_t key = temp[start_idx + inner_stride * i];
+        int j = i - 1;
+        while (j >= 0 && temp[start_idx + inner_stride * j] > key) {
+          temp[start_idx + inner_stride * (j + 1)] = temp[start_idx + inner_stride * j];
+          output_grad[start_idx + inner_stride * (j + 1)] = grad[start_idx + inner_stride * j];
+          j = j - 1;
+        }
+        temp[start_idx + inner_stride * (j + 1)] = key;
+        output_grad[start_idx + inner_stride * (j + 1)] = grad[start_idx + inner_stride * i];
       }
     } else if (inner_idx < axis_length) {
       // In range, but at end of sorting axis
-      output_grad[left_idx] = grad[left_idx];
+      output_grad[start_idx] = grad[start_idx];
     }
+
   }
+
+
+  // if (outer_idx < outer_size && stride_idx < inner_stride) {
+  //   const int left_idx = inner_stride * axis_length * outer_idx + inner_idx * inner_stride + stride_idx;
+  //   if (inner_idx < axis_length - 1) {
+  //     const int right_idx = left_idx + inner_stride;
+  //     if (input[left_idx] < input[right_idx]) {
+  //       output_grad[left_idx] = grad[left_idx];
+  //       output_grad[right_idx] = grad[right_idx];
+  //     } else {
+  //       output_grad[left_idx] = grad[right_idx];
+  //       output_grad[right_idx] = grad[left_idx];
+  //     }
+  //   } else if (inner_idx < axis_length) {
+  //     // In range, but at end of sorting axis
+  //     output_grad[left_idx] = grad[left_idx];
+  //   }
+  // }
+
+
 }
 
 at::Tensor maxmin_cuda_backward(
     at::Tensor input,
     at::Tensor grad,
-    int32_t axis) {
+    int32_t axis,
+    int32_t group_size) {
   const auto num_dims = input.ndimension();
   const auto axis_length = input.size(axis);
   const int true_axis = (axis == -1) ? num_dims - 1 : axis;
@@ -175,6 +212,7 @@ at::Tensor maxmin_cuda_backward(
   dim3 grid((outer_size + 7) / 8, (axis_length + 15) / 16, (inner_stride + 7) / 8);
 
   auto output_grad = at::zeros_like(grad);
+  auto temp = at::zeros_like(input);
 
   AT_DISPATCH_ALL_TYPES(input.type(), "maxmin_backward_cuda", ([&] {
     maxmin_cuda_backward_kernel<scalar_t><<<grid, block>>>(
@@ -183,6 +221,8 @@ at::Tensor maxmin_cuda_backward(
         outer_size,
         axis_length,
         inner_stride,
+        group_size,
+        temp.data<scalar_t>(),
         output_grad.data<scalar_t>());
   }));
   return output_grad;

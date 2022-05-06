@@ -2,6 +2,7 @@ import torch
 import time 
 from maxmin.maxmin_cuda import MaxMin as CudaMaxMin
 from maxmin.maxmin_py import MaxMin as PyMaxMin
+from torch.autograd import grad
 
 class Timer:
     def __init__(self, label):
@@ -16,11 +17,6 @@ class Timer:
         
         print("{}: {:.8f}".format(self.label, time.time() - self.st_time))
 
-
-b = 5000
-f = 2400
-
-x = torch.randn(b, f).cuda()
 
 def group_sort_cuda(x, maxmin, group_size):
     new_x = x.view(-1, group_size, f//group_size)
@@ -41,27 +37,53 @@ def group_sort_naive_2(x):
     a, b = x.split(f//2, dim=-1)
     return torch.cat([torch.minimum(a, b), torch.maximum(a, b)], dim=1)
 
-for group_size in range(1, 60):
-    if f%group_size != 0: continue
+b = 5000
+f = 2400
 
-    cuda_sort = CudaMaxMin(1, group_size=group_size)
 
-    cuda_result = group_sort_cuda(x, cuda_sort, group_size=group_size)
-    torch_result = group_sort_torch(x, group_size=group_size)
+# forward pass testing
+x = torch.randn(b, f).cuda()
+# for group_size in range(1, 60):
+#     if f%group_size != 0: continue
 
-    st_time = time.time()
-    for i in range(500):
-        _ = group_sort_cuda(x, cuda_sort, group_size=group_size)
-    ed_time = time.time()  
-    cuda_time = "cuda: {:.8f}".format(ed_time - st_time)
+#     cuda_sort = CudaMaxMin(1, group_size=group_size)
 
-    st_time = time.time()
-    for i in range(500):
-        _ = group_sort_torch(x, group_size=group_size)
-    ed_time = time.time()  
-    torch_time = "torch: {:.8f}".format(ed_time - st_time)
+#     cuda_result = group_sort_cuda(x, cuda_sort, group_size=group_size)
+#     torch_result = group_sort_torch(x, group_size=group_size)
 
-    print(group_size, "equivalent:", torch_result.allclose(cuda_result), "TIME:", cuda_time, torch_time)
+    # st_time = time.time()
+    # for i in range(500):
+    #     _ = group_sort_torch(x, group_size=group_size)
+    # ed_time = time.time()  
+    # torch_time = "torch: {:.8f}".format(ed_time - st_time)
+
+    # st_time = time.time()
+    # for i in range(500):
+    #     _ = group_sort_cuda(x, cuda_sort, group_size=group_size)
+    # ed_time = time.time()  
+    # cuda_time = "cuda: {:.8f}".format(ed_time - st_time)
+
+    # print(group_size, cuda_time)
+    # print(group_size, "equivalent:", torch_result.allclose(cuda_result), "TIME:", cuda_time, torch_time)
+
+# backward pass testing
+group_size = 3
+x = torch.randn((b, f), requires_grad=True).cuda()
+view_x = x.view(-1, group_size, f//group_size)
+view_x.requires_grad_()
+
+cuda_sort = CudaMaxMin(1, group_size=group_size)
+cuda_output = cuda_sort(view_x)
+cuda_o = (cuda_output - view_x).abs().sum()
+cuda_grad = grad(cuda_o, view_x)[0]
+
+torch_output, indices = view_x.sort(dim=1)
+torch_o = (torch_output - view_x).abs().sum()
+torch_grad = grad(torch_o, view_x)[0]
+t_grad = torch_grad.gather(1, indices)
+
+print("equivalent:", torch_grad.allclose(cuda_grad))
+
 
 
 # st_time = time.time()
