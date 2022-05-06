@@ -67,7 +67,7 @@ x = torch.randn(b, f).cuda()
     # print(group_size, "equivalent:", torch_result.allclose(cuda_result), "TIME:", cuda_time, torch_time)
 
 # backward pass testing
-group_size = 3
+group_size = 5
 x = torch.randn((b, f), requires_grad=True).cuda()
 view_x = x.view(-1, group_size, f//group_size)
 view_x.requires_grad_()
@@ -80,7 +80,7 @@ cuda_grad = grad(cuda_o, view_x)[0]
 torch_output, indices = view_x.sort(dim=1)
 torch_o = (torch_output - view_x).abs().sum()
 torch_grad = grad(torch_o, view_x)[0]
-t_grad = torch_grad.gather(1, indices)
+# t_grad = torch_grad.gather(1, indices)
 
 print("equivalent:", torch_grad.allclose(cuda_grad))
 

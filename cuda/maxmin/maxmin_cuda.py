@@ -7,13 +7,14 @@ class MaxMinFunction(torch.autograd.Function):
         ctx.save_for_backward(input)
         ctx.axis = axis
         ctx.group_size = group_size
-        outputs = maxmin_extension.forward(input, axis, group_size)
-        return outputs
+        output, argsort = maxmin_extension.forward(input, axis, group_size)
+        ctx.argsort = argsort
+        return output
 
     @staticmethod
     def backward(ctx, grad_h):
         input, = ctx.saved_tensors
-        return maxmin_extension.backward(input, grad_h.contiguous(), ctx.axis, ctx.group_size), None, None
+        return maxmin_extension.backward(input, grad_h.contiguous(), ctx.axis, ctx.group_size, ctx.argsort), None, None
 
 class MaxMin(torch.nn.Module):
     def __init__(self, axis=-1, group_size=2):

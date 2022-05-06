@@ -102,7 +102,7 @@ at::Tensor maxmin_cpu_backward(
 }
 
 // CUDA declarations
-at::Tensor maxmin_cuda_forward(
+std::vector<at::Tensor> maxmin_cuda_forward(
     at::Tensor input,
     int32_t axis, 
     int32_t group_size);
@@ -111,7 +111,8 @@ at::Tensor maxmin_cuda_backward(
     at::Tensor input,
     at::Tensor grad,
     int32_t axis,
-    int32_t group_size);
+    int32_t group_size,
+    at::Tensor argsort);
 
 
 // C++ interface
@@ -119,31 +120,37 @@ at::Tensor maxmin_cuda_backward(
 #define CHECK_CONTIGUOUS(x) AT_ASSERTM(x.is_contiguous(), #x " must be contiguous")
 #define CHECK_INPUT(x) CHECK_CONTIGUOUS(x)
 
-at::Tensor maxmin_forward(
+std::vector<at::Tensor> maxmin_forward(
     at::Tensor input,
     int32_t axis, 
     int32_t group_size) {
   CHECK_INPUT(input);
-  if (input.type().is_cuda()) {
-    return maxmin_cuda_forward(input, axis, group_size);
-  } else {
-    return maxmin_cpu_forward(input, axis);
-  }
+
+  return maxmin_cuda_forward(input, axis, group_size);
+  
+  // if (input.type().is_cuda()) {
+  //   return maxmin_cuda_forward(input, axis, group_size);
+  // } else {
+  //   return maxmin_cpu_forward(input, axis);
+  // }
 }
 
 at::Tensor maxmin_backward(
     at::Tensor input,
     at::Tensor grad,
     int32_t axis,
-    int32_t group_size) {
+    int32_t group_size,
+    at::Tensor argsort) {
   CHECK_INPUT(input);
   CHECK_INPUT(grad);
 
-  if (input.type().is_cuda()) {
-    return maxmin_cuda_backward(input, grad, axis, group_size);
-  } else {
-    return maxmin_cpu_backward(input, grad, axis);
-  }
+  return maxmin_cuda_backward(input, grad, axis, group_size, argsort);
+
+  // if (input.type().is_cuda()) {
+  //   return maxmin_cuda_backward(input, grad, axis, group_size, argsort);
+  // } else {
+  //   return maxmin_cpu_backward(input, grad, axis);
+  // }
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
