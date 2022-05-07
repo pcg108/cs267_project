@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 template <typename scalar_t>
-__global__ void maxmin_cuda_forward_kernel(
+__global__ void groupsort_cuda_forward_kernel(
     const scalar_t* __restrict__ input,
     size_t outer_size,
     size_t axis_length,
@@ -74,7 +74,7 @@ __global__ void maxmin_cuda_forward_kernel(
 
 }
 
-std::vector<at::Tensor> maxmin_cuda_forward(
+std::vector<at::Tensor> groupsort_cuda_forward(
     at::Tensor input,
     int32_t axis, 
     int32_t group_size) {
@@ -96,8 +96,8 @@ std::vector<at::Tensor> maxmin_cuda_forward(
 
   auto output = at::zeros_like(input);
   auto argsort = at::zeros_like(input);
-  AT_DISPATCH_ALL_TYPES(input.type(), "maxmin_forward_cuda", ([&] {
-    maxmin_cuda_forward_kernel<scalar_t><<<grid, block>>>(
+  AT_DISPATCH_ALL_TYPES(input.type(), "groupsort_forward_cuda", ([&] {
+    groupsort_cuda_forward_kernel<scalar_t><<<grid, block>>>(
         input.data<scalar_t>(),
         outer_size,
         axis_length,
@@ -115,10 +115,12 @@ std::vector<at::Tensor> maxmin_cuda_forward(
 
 
 template <typename scalar_t>
-__global__ void maxmin_cuda_backward_kernel(
+__global__ void groupsort_cuda_backward_kernel(
     const scalar_t* __restrict__ input,
+    scalar_t* __restrict__ temp,
     const scalar_t* __restrict__ grad,
     const scalar_t* __restrict__ argsort,
+    scalar_t* __restrict__ argsort_temp,
     size_t outer_size,
     size_t axis_length,
     size_t inner_stride,
@@ -135,7 +137,7 @@ __global__ void maxmin_cuda_backward_kernel(
 
       // use sorted indices to undo the sort on the gradient
       for (int i = 0; i < group_size; i++) {
-        int original_i = argsort[start_idx + inner_stride * i];
+        const int original_i = argsort[start_idx + inner_stride * i];
         output_grad[start_idx + inner_stride * original_i] = grad[start_idx + inner_stride * i];
       }
 
@@ -149,7 +151,7 @@ __global__ void maxmin_cuda_backward_kernel(
 
 }
 
-at::Tensor maxmin_cuda_backward(
+at::Tensor groupsort_cuda_backward(
     at::Tensor input,
     at::Tensor grad,
     int32_t axis,
@@ -172,12 +174,16 @@ at::Tensor maxmin_cuda_backward(
   dim3 grid((outer_size + 7) / 8, (axis_length + 15) / 16, (inner_stride + 7) / 8);
 
   auto output_grad = at::zeros_like(grad);
+  auto temp = at::zeros_like(input);
+  auto argsort_temp = at::zeros_like(input);
 
-  AT_DISPATCH_ALL_TYPES(input.type(), "maxmin_backward_cuda", ([&] {
-    maxmin_cuda_backward_kernel<scalar_t><<<grid, block>>>(
+  AT_DISPATCH_ALL_TYPES(input.type(), "groupsort_backward_cuda", ([&] {
+    groupsort_cuda_backward_kernel<scalar_t><<<grid, block>>>(
         input.data<scalar_t>(),
+        temp.data<scalar_t>(),
         grad.data<scalar_t>(),
         argsort.data<scalar_t>(),
+        argsort_temp.data<scalar_t>(),
         outer_size,
         axis_length,
         inner_stride,

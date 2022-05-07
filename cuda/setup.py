@@ -1,9 +1,9 @@
 from setuptools import setup
 from torch.utils.cpp_extension import CppExtension, BuildExtension, CUDAExtension
 
-setup(name='maxmin',
+setup(name='groupsort',
       version='0.0.1',
-      description='MaxMin activation function.',
-      packages=['maxmin'],
-      ext_modules=[CUDAExtension('maxmin.maxmin_extension', ['maxmin-extension/maxmin.cpp', 'maxmin-extension/maxmin_kernel.cu'])],
+      description='GroupSort activation function.',
+      packages=['groupsort'],
+      ext_modules=[CUDAExtension('groupsort.groupsort_extension', ['groupsort-extension/groupsort.cpp', 'groupsort-extension/groupsort_kernel.cu'])],
       cmdclass={'build_ext': BuildExtension})
