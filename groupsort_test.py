@@ -41,51 +41,77 @@ f = 2400
 
 
 # forward pass testing
-for group_size in range(1, 60):
-    if f%group_size != 0: continue
+# for group_size in range(1, 60):
+#     if f%group_size != 0: continue
 
-    x = torch.randn(b, f).cuda()
+#     x = torch.randn(b, f).cuda()
 
-    cuda_sort = CudaGroupSort(1, group_size=group_size)
+    # cuda_sort = CudaGroupSort(1, group_size=group_size)
+    # cuda_result = group_sort_cuda(x, cuda_sort, group_size=group_size)
+    # torch_result = group_sort_torch(x, group_size=group_size)
 
-    cuda_result = group_sort_cuda(x, cuda_sort, group_size=group_size)
-    torch_result = group_sort_torch(x, group_size=group_size)
+    # st_time = time.time()
+    # for i in range(1):
+    #     _ = group_sort_torch(x, group_size=group_size)
+    # ed_time = time.time()  
+    # torch_time = "torch: {:.8f}".format(ed_time - st_time)
 
-    st_time = time.time()
-    for i in range(100):
-        _ = group_sort_torch(x, group_size=group_size)
-    ed_time = time.time()  
-    torch_time = "torch: {:.8f}".format(ed_time - st_time)
-
-    st_time = time.time()
-    for i in range(100):
-        _ = group_sort_cuda(x, cuda_sort, group_size=group_size)
-    ed_time = time.time()  
-    cuda_time = "cuda: {:.8f}".format(ed_time - st_time)
+    # st_time = time.time()
+    # for i in range(1):
+    #     _ = group_sort_cuda(x, cuda_sort, group_size=group_size)
+    # ed_time = time.time()  
+    # cuda_time = "cuda: {:.8f}".format(ed_time - st_time)
 
     # print(group_size, cuda_time)
-    print(group_size, "equivalent:", torch_result.allclose(cuda_result), "TIME:", cuda_time, torch_time)
+    # print(group_size, torch_time)
+    # print(group_size, "equivalent:", torch_result.allclose(cuda_result), "TIME:", cuda_time, torch_time)
+
+group_size = 5
+cuda_sort = CudaGroupSort(1, group_size=group_size)
+x = torch.randn(b, f).cuda()
+
+st_time = time.time()
+for i in range(500):
+    # _ = group_sort_torch(x, group_size=group_size)
+    _ = group_sort_cuda(x, cuda_sort, group_size=group_size)
+ed_time = time.time()  
+el_time = "time: {:.8f}".format(ed_time - st_time)
+print(group_size, el_time)
 
 # backward pass testing
-x = torch.randn((b, f), requires_grad=True).cuda()
+# x = torch.randn((b, f), requires_grad=True).cuda()
 
-for group_size in range(1, 60):
-    if f%group_size != 0: continue
+# for group_size in range(1, 60):
+#     if f%group_size != 0: continue
 
-    view_x = x.view(-1, group_size, f//group_size)
-    view_x.requires_grad_()
+#     view_x = x.view(-1, group_size, f//group_size)
+#     view_x.requires_grad_()
 
-    cuda_sort = CudaGroupSort(1, group_size=group_size)
-    cuda_output = cuda_sort(view_x)
-    cuda_o = (cuda_output - view_x).abs().sum()
-    cuda_grad = grad(cuda_o, view_x)[0]
+#     cuda_sort = CudaGroupSort(1, group_size=group_size)
+#     cuda_output = cuda_sort(view_x)
+#     cuda_o = (cuda_output - view_x).abs().sum()
+#     cuda_grad = grad(cuda_o, view_x)[0]
 
-    torch_output, indices = view_x.sort(dim=1, stable=True)
-    torch_o = (torch_output - view_x).abs().sum()
-    torch_grad = grad(torch_o, view_x)[0]
-    # t_grad = torch_grad.gather(1, indices)
+#     torch_output, indices = view_x.sort(dim=1, stable=True)
+#     torch_o = (torch_output - view_x).abs().sum()
+#     torch_grad = grad(torch_o, view_x)[0]
+#     # t_grad = torch_grad.gather(1, indices)
 
 
-    print(group_size, "equivalent:", torch_grad.allclose(cuda_grad))
+#     print(group_size, "equivalent:", torch_grad.allclose(cuda_grad))
     
 
+# view_x = x.view(-1, group_size, f//group_size)
+# view_x.requires_grad_()
+
+# cuda_sort = CudaGroupSort(1, group_size=group_size)
+# cuda_output = cuda_sort(view_x)
+# cuda_o = (cuda_output - view_x).abs().sum()
+# cuda_grad = grad(cuda_o, view_x)[0]
+
+# torch_output, indices = view_x.sort(dim=1, stable=True)
+# torch_o = (torch_output - view_x).abs().sum()
+# torch_grad = grad(torch_o, view_x)[0]
+
+# print(group_size, "equivalent output:", torch_output.allclose(torch_output))
+# print(group_size, "equivalent gradient:", torch_grad.allclose(cuda_grad))
