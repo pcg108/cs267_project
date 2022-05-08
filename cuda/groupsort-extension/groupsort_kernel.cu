@@ -51,6 +51,24 @@ __global__ void groupsort_cuda_forward_kernel(
           }
         }
 
+      } else if (group_size == 10) {
+
+        int index_1, index_2;
+        int network[29][2] = {{0, 5}, {1, 6}, {2, 7}, {3, 8}, {4, 9}, {5, 8}, {0, 3}, {6, 9}, {1, 4}, {7, 9}, {3, 6}, {0, 2}, {8, 9}, {5, 7}, {2, 4}, {0, 1}, {7, 8}, {3, 5}, {1, 2}, {4, 6}, {4, 7}, {1, 3}, {6, 8}, {2, 5}, {6, 7}, {2, 3}, {5, 6}, {3, 4}, {4, 5}};
+        for (int i = 0; i < 29; i++) {
+          index_1 = start_idx + inner_stride * network[i][0];
+          index_2 = start_idx + inner_stride * network[i][1];
+          if (output[index_1] > output[index_2]) {
+            scalar_t temp = output[index_1];
+            output[index_1] = output[index_2];
+            output[index_2] = temp;
+
+            int a = argsort[index_1];
+            argsort[index_1] = argsort[index_2];
+            argsort[index_2] = a;
+          }
+        }
+
       } else { 
         // insertion sort
         for (int i = 1; i < group_size; i++) {
