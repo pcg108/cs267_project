@@ -37,8 +37,8 @@ class NN(torch.nn.Module):
             x = self.gs(x)
         return self.layers[-1](x)
 
-bs = 10000
-in_features = 10000
+bs = 100000
+in_features = 100
 m_ours = NN(in_features=in_features, n_layers=5, group_size=5, ours=True)
 m_ours.cuda()
 
@@ -51,20 +51,20 @@ x = torch.randn(bs, in_features).cuda()
 n_trials = 10
 
 
-# y = m_ours(x)
-# st_time = time.time()
-# for i in range(n_trials):
-#     y = m_ours(x)
-# ed_time = time.time() 
-# print("Ours Forward Pass time: {:.6f}".format((ed_time - st_time) / n_trials))
-
-
-y = m_torch(x)
+y = m_ours(x)
 st_time = time.time()
 for i in range(n_trials):
-    y = m_torch(x)
+    y = m_ours(x)
 ed_time = time.time() 
-print("PyTorch Forward Pass time: {:.6f}".format((ed_time - st_time) / n_trials))
+print("Ours Forward Pass time: {:.6f}".format((ed_time - st_time) / n_trials))
+
+
+# y = m_torch(x)
+# st_time = time.time()
+# for i in range(n_trials):
+#     y = m_torch(x)
+# ed_time = time.time() 
+# print("PyTorch Forward Pass time: {:.6f}".format((ed_time - st_time) / n_trials))
 
 # st_time = time.time()
 # for i in range(n_trials):
