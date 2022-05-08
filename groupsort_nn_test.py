@@ -37,13 +37,15 @@ class NN(torch.nn.Module):
             x = self.gs(x)
         return self.layers[-1](x)
 
-bs = 100000
-in_features = 100
-m_ours = NN(in_features=in_features, n_layers=5, group_size=5, ours=True)
+bs = 20000
+in_features = 5000
+out_features = 5000
+hidden_features = 5000
+m_ours = NN(in_features=in_features, out_features=out_features, hidden_features=hidden_features,  n_layers=5, group_size=5, ours=True)
 m_ours.cuda()
 
 
-m_torch = NN(in_features=in_features, n_layers=5, group_size=5, ours=False)
+m_torch = NN(in_features=in_features, out_features=out_features, hidden_features=hidden_features, n_layers=5, group_size=5, ours=False)
 m_torch.cuda()
 x = torch.randn(bs, in_features).cuda()
 
