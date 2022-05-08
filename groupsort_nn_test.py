@@ -41,11 +41,12 @@ bs = 5000
 in_features = 5000
 out_features = 5000
 hidden_features = 5000
-m_ours = NN(in_features=in_features, out_features=out_features, hidden_features=hidden_features,  n_layers=5, group_size=5, ours=True)
+group_size = 10
+m_ours = NN(in_features=in_features, out_features=out_features, hidden_features=hidden_features,  n_layers=5, group_size=group_size, ours=True)
 m_ours.cuda()
 
 
-m_torch = NN(in_features=in_features, out_features=out_features, hidden_features=hidden_features, n_layers=5, group_size=5, ours=False)
+m_torch = NN(in_features=in_features, out_features=out_features, hidden_features=hidden_features, n_layers=5, group_size=group_size, ours=False)
 m_torch.cuda()
 x = torch.randn(bs, in_features).cuda()
 
@@ -68,20 +69,20 @@ n_trials = 100
 # ed_time = time.time() 
 # print("PyTorch Forward Pass time: {:.6f}".format((ed_time - st_time) / n_trials))
 
-# st_time = time.time()
-# for i in range(n_trials):
-#     y = m_ours(x)
-#     l = y.mean()
-#     l.backward()
-#     m_ours.zero_grad()
-# ed_time = time.time() 
-# print("Ours Forward Pass + Backward Pass time: {:.3f}".format((ed_time - st_time) / n_trials))
-
 st_time = time.time()
 for i in range(n_trials):
-    y = m_torch(x)
+    y = m_ours(x)
     l = y.mean()
     l.backward()
-    m_torch.zero_grad()
+    m_ours.zero_grad()
 ed_time = time.time() 
-print("PyTorch Forward Pass + Backward Pass time: {:.3f}".format((ed_time - st_time) / n_trials))
+print("Ours Forward Pass + Backward Pass time: {:.3f}".format((ed_time - st_time) / n_trials))
+
+# st_time = time.time()
+# for i in range(n_trials):
+#     y = m_torch(x)
+#     l = y.mean()
+#     l.backward()
+#     m_torch.zero_grad()
+# ed_time = time.time() 
+# print("PyTorch Forward Pass + Backward Pass time: {:.3f}".format((ed_time - st_time) / n_trials))
