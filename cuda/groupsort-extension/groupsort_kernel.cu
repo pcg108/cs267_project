@@ -6,6 +6,7 @@
 #include <vector>
 #include <stdio.h>
 
+
 template <typename scalar_t>
 __global__ void groupsort_cuda_forward_kernel(
     const scalar_t* __restrict__ input,
@@ -31,18 +32,42 @@ __global__ void groupsort_cuda_forward_kernel(
         argsort[start_idx + inner_stride * i] = i;
       }
 
-      // insertion sort
-      for (int i = 1; i < group_size; i++) {
-        scalar_t key = output[start_idx + inner_stride * i];
-        int j = i - 1;
-        while (j >= 0 && output[start_idx + inner_stride * j] > key) {
-          output[start_idx + inner_stride * (j + 1)] = output[start_idx + inner_stride * j];
-          argsort[start_idx + inner_stride * (j + 1)] = argsort[start_idx + inner_stride * j];
-          j = j - 1;
+
+      if (group_size == 5) {
+
+        int index_1, index_2;
+        int network[9][2] = {{0, 1}, {2, 3}, {0, 2}, {1, 3}, {2, 1}, {1, 4}, {1, 2}, {0, 1}, {3, 4}};
+        for (int i = 0; i < 9; i++) {
+          index_1 = start_idx + inner_stride * network[i][0];
+          index_2 = start_idx + inner_stride * network[i][1];
+          if (output[index_1] > output[index_2]) {
+            scalar_t temp = output[index_1];
+            output[index_1] = output[index_2];
+            output[index_2] = temp;
+
+            int a = argsort[index_1];
+            argsort[index_1] = argsort[index_2];
+            argsort[index_2] = a;
+          }
         }
-        output[start_idx + inner_stride * (j + 1)] = key;
-        argsort[start_idx + inner_stride * (j + 1)] = i;
+
+      } else { 
+        // insertion sort
+        for (int i = 1; i < group_size; i++) {
+          scalar_t key = output[start_idx + inner_stride * i];
+          int j = i - 1;
+          while (j >= 0 && output[start_idx + inner_stride * j] > key) {
+            output[start_idx + inner_stride * (j + 1)] = output[start_idx + inner_stride * j];
+            argsort[start_idx + inner_stride * (j + 1)] = argsort[start_idx + inner_stride * j];
+            j = j - 1;
+          }
+          output[start_idx + inner_stride * (j + 1)] = key;
+          argsort[start_idx + inner_stride * (j + 1)] = i;
+        }
       }
+
+
+      
 
     } else if (inner_idx < axis_length) {
       // In range, but at end of sorting axis
@@ -97,7 +122,7 @@ std::vector<at::Tensor> groupsort_cuda_forward(
   auto output = at::zeros_like(input);
   auto argsort = at::zeros_like(input);
   AT_DISPATCH_ALL_TYPES(input.type(), "groupsort_forward_cuda", ([&] {
-    groupsort_cuda_forward_kernel<scalar_t><<<grid, block>>>(
+    groupsort_cuda_forward_kernel<scalar_t><<<grid, block>>>(           // (input.numel()+255 / 256), 256
         input.data<scalar_t>(),
         outer_size,
         axis_length,
